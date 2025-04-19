@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scan to PDF</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+    }
+    header img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    video, canvas, img {
+      width: 100%;
+      max-width: 400px;
+      border: 2px solid #333;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: gray;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="assets/header.png" alt="Scan to PDF Header" />
+  </header>
+
+  <h1>Scan to PDF</h1>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <img id="preview" alt="Captured image preview" style="display:none;" />
+
+  <div class="buttons">
+    <button onclick="capture()">Capture</button>
+    <button onclick="savePDF()" id="saveBtn" disabled>Save as PDF</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const preview = document.getElementById("preview");
+    const saveBtn = document.getElementById("saveBtn");
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("Camera access denied or not available.");
+      }
+    }
+
+    function capture() {
+      const context = canvas.getContext("2d");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataURL = canvas.toDataURL("image/jpeg");
+      preview.src = dataURL;
+      preview.style.display = "block";
+      saveBtn.disabled = false;
+    }
+
+    async function savePDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const ratio = imgProps.width / imgProps.height;
+      let pdfWidth = pageWidth;
+      let pdfHeight = pageWidth / ratio;
+
+      if (pdfHeight > pageHeight) {
+        pdfHeight = pageHeight;
+        pdfWidth = pageHeight * ratio;
+      }
+
+      const x = (pageWidth - pdfWidth) / 2;
+      const y = (pageHeight - pdfHeight) / 2;
+
+      pdf.addImage(imgData, 'JPEG', x, y, pdfWidth, pdfHeight);
+      pdf.save("scanned-document.pdf");
+    }
+
+    startCamera();
+  </script>
+</body>
+</html>
